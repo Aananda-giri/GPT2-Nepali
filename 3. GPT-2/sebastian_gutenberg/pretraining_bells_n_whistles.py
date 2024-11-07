@@ -1,9 +1,11 @@
 # code from https://github.com/rasbt/LLMs-from-scratch/blob/main/appendix-D/01_main-chapter-code/appendix-D.ipynb
 
 import argparse
+import math
 import os
 from pathlib import Path
 import time
+
 
 # modified. tokenizer import
 # import tiktoken
@@ -141,7 +143,7 @@ def train_model(model, train_loader, val_loader, optimizer, device,
                         f"Val loss {val_loss:.3f}"
                     )
 
-            # Generate and print a sample from the model to monitor progress
+            # Generate and print a sample from the model to monitor progress (at the end of each epoch)
             generate_and_print_sample(
                 model, tokenizer, device, start_context
             )
