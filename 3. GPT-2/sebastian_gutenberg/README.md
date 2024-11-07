@@ -5,7 +5,7 @@ This project adapts Sebastian Raschka's code for training GPT-2 models on the Ne
 
 ### Overview
 
-- **Original Repository:** Sebastian Raschka's LLMs-from-scratch
+- **Original Repository:** [Sebastian Raschka's LLMs-from-scratch](https://github.com/rasbt/LLMs-from-scratch/tree/main/ch05/03_bonus_pretraining_on_gutenberg)
 - **Modifications:** Adaptations have been made to handle Nepali text data and preprocess it appropriately for GPT-2. For a detailed list of changes, see ./modifications.ipynb.
 - **Key Differences from the Original Code**
 
@@ -18,6 +18,16 @@ This project adapts Sebastian Raschka's code for training GPT-2 models on the Ne
 ```
 !python3 prepare_dataset.py
 
+# code from: https://github.com/rasbt/LLMs-from-scratch/blob/main/appendix-D/01_main-chapter-code/appendix-D.ipynb
+
+!pretraining_bells_n_whistles.py \
+  --data_dir "nepberta_sample" \
+  --n_epochs 1 \
+  --batch_size 4 \
+  --output_dir model_checkpoints
+
+
+# Alternatively you can run simple pretraining_code as
 !python pretraining_simple.py \
   --data_dir "nepberta_sample" \
   --n_epochs 1 \
