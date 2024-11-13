@@ -6,28 +6,33 @@ This project adapts Sebastian Raschka's code for training GPT-2 models on the Ne
 ### Overview
 
 - **Original Repository:** [Sebastian Raschka's LLMs-from-scratch](https://github.com/rasbt/LLMs-from-scratch/tree/main/ch05/03_bonus_pretraining_on_gutenberg)
-- **Modifications:** Adaptations have been made to handle Nepali text data and preprocess it appropriately for GPT-2. For a detailed list of changes, see ./modifications.ipynb.
+- **Modifications:** Adaptations have been made to handle Nepali text data and preprocess it appropriately for GPT-2. For a detailed list of changes, see [modifications.ipynb](./modifications.ipynb).
+
+- Also refer to [pre-tokenize.ipynb](./pre-tokenize.ipynb) for changes regarding dataloader and pre-tokenizatin (saving tokenized data instead of tokenizing at the time of training.)
+
 - **Key Differences from the Original Code**
 
 * Dataset: The original script used the Project Gutenberg dataset for training. This modified version is configured to use the NepBERTa dataset.
 * Language Preprocessing: Additional preprocessing steps were implemented to ensure compatibility with Nepali text data.
 * Training Parameters: Certain parameters, including tokenization and vocabulary settings, were adjusted to align with NepBERTa’s requirements.
+* GPTDataset: save/load tokenized data with input_ids and target_ids for context_length of 1024
 
 ### To run the modified version of code:
 
 ```
+# Download the dataset
 !python3 prepare_dataset.py
 
-# code from: https://github.com/rasbt/LLMs-from-scratch/blob/main/appendix-D/01_main-chapter-code/appendix-D.ipynb
+# modified code from: https://github.com/rasbt/LLMs-from-scratch/blob/main/appendix-D/01_main-chapter-code/appendix-D.ipynb
 
-!pretraining_bells_n_whistles.py \
+!python3 pretraining_bells_n_whistles.py \
   --data_dir "nepberta_sample" \
   --n_epochs 1 \
   --batch_size 4 \
   --output_dir model_checkpoints
 
 
-# Alternatively you can run simple pretraining_code as
+# Alternatively you can run simpler pretraining_code
 !python pretraining_simple.py \
   --data_dir "nepberta_sample" \
   --n_epochs 1 \
