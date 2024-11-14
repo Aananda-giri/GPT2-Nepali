@@ -15,9 +15,20 @@ This project adapts Sebastian Raschka's code for training GPT-2 models on the Ne
 * Dataset: The original script used the Project Gutenberg dataset for training. This modified version is configured to use the NepBERTa dataset.
 * Language Preprocessing: Additional preprocessing steps were implemented to ensure compatibility with Nepali text data.
 * Training Parameters: Certain parameters, including tokenization and vocabulary settings, were adjusted to align with NepBERTa’s requirements.
-* GPTDataset: save/load tokenized data with input_ids and target_ids for context_length of 1024
+* GPTDataset: save/load (from huggingface) tokenized data with input_ids and target_ids for context_length of 1024
 
 ### To run the modified version of code:
+
+```
+# to run latest version of code (pre-tokenized dataset from huggingface)
+# original: https://github.com/rasbt/LLMs-from-scratch/blob/main/appendix-D/01_main-chapter-code/appendix-D.ipynb
+!python pretraining_bells_n_whistles_modified_training_loop.py \
+  --n_epochs 1 \
+  --batch_size 4 \
+  --output_dir model_checkpoints \
+  --eval_freq 2000 \
+  --save_ckpt_freq_steps 10000
+```
 
 ```
 # Download the dataset

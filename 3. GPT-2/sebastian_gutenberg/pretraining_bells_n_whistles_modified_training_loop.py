@@ -88,6 +88,12 @@ def train_model(model, train_loader, val_loader, optimizer, device,
     # train_losses, val_losses, track_tokens_seen, track_lrs = [], [], [], []
     tokens_seen, global_step = 0, -1
 
+    # modified to resume
+    if previous_global_step and global_step < previous_global_step% len(train_loader):
+        global_step = previous_global_step % len(train_loader)
+        # print('.')
+        # continue    # continue till global_step gets to previous_global_step
+
     # Retrieve the maximum learning rate from the optimizer
     peak_lr = optimizer.param_groups[0]["lr"]
 
@@ -102,10 +108,6 @@ def train_model(model, train_loader, val_loader, optimizer, device,
             for input_batch, target_batch in train_loader:
                 optimizer.zero_grad()
                 global_step += 1
-                # modified to resume
-                if previous_global_step and global_step < previous_global_step% len(train_loader):
-                    print('.')
-                    continue    # continue till global_step gets to previous_global_step
 
                 # Adjust the learning rate based on the current phase (warmup or cosine annealing)
                 if global_step < warmup_steps:
@@ -152,27 +154,28 @@ def train_model(model, train_loader, val_loader, optimizer, device,
                         f"Train loss {train_loss:.3f}, "
                         f"Val loss {val_loss:.3f}"
                     )
-                    # Save at every 10,000 steps
-                    if global_step % 10_000 == 0:
-                        save_file_path = os.path.join(output_dir, f"model_pg_{global_step}_steps.pth")
-                        torch.save({
-                            "model_state_dict": model.state_dict(),
-                            "optimizer_state_dict": optimizer.state_dict(),
-                            "train_losses": train_losses,
-                            "train_losses": train_losses,
-                            "track_tokens_seen": track_tokens_seen,
-                            "track_lrs": track_lrs,
-                            "epochs": epoch + previous_epochs,
-                            "global_step": global_step,
-                            },
-                            save_file_path
+                
+                # Save at every 10,000 steps
+                if global_step % args.save_ckpt_freq_steps == 0 and global_step != 0:
+                    save_file_path = os.path.join(output_dir, f"model_pg_{global_step}_steps.pth")
+                    torch.save({
+                        "model_state_dict": model.state_dict(),
+                        "optimizer_state_dict": optimizer.state_dict(),
+                        "train_losses": train_losses,
+                        "train_losses": train_losses,
+                        "track_tokens_seen": track_tokens_seen,
+                        "track_lrs": track_lrs,
+                        "epochs": epoch + previous_epochs,
+                        "global_step": global_step,
+                        },
+                        save_file_path
                     )
                     print(f"Saved {save_file_path}")
-            if global_step % 50_000 == 0:
-                # Generate and print a sample from the model to monitor progress (at the end of each epoch)
-                generate_and_print_sample(
-                    model, tokenizer, device, start_context
-                )
+                    # Generate and print a sample from the model to monitor progress (at the end of each epoch)
+                    generate_and_print_sample(
+                        model, tokenizer, device, start_context
+                    )
+                    
             # Save at the end of each epoch
             # save_file_path = os.path.join(output_dir, f"model_pg_epoch_{epoch + previous_epochs}.pth")
             # torch.save({
@@ -194,6 +197,12 @@ def train_model(model, train_loader, val_loader, optimizer, device,
         torch.save({
             "model_state_dict": model.state_dict(),
             "optimizer_state_dict": optimizer.state_dict(),
+            "train_losses": train_losses,
+            "train_losses": train_losses,
+            "track_tokens_seen": track_tokens_seen,
+            "track_lrs": track_lrs,
+            "epochs": epoch + previous_epochs,
+            "global_step": global_step,
             }, 
             file_name
         )
@@ -269,6 +278,10 @@ if __name__ == "__main__":
     # modified. added resume_from_previous_training
     parser.add_argument('--resume_from_previous_training', type=bool, default=True,
                         help='whether or not to resume from saved previous training checkpoint')
+    parser.add_argument('--push_to_hub_every_n_hours', type=int, default=6,
+                        help='how often to push to hub in hours.')
+    parser.add_argument('--save_ckpt_freq_steps', type=int, default=10_000,
+                        help='how often to save the model checkpoint in steps')
 
     args = parser.parse_args()
 
@@ -333,8 +346,10 @@ if __name__ == "__main__":
         track_lrs = checkpoint["track_lrs"]
         previous_epochs = checkpoint["epochs"]
         previous_global_step = checkpoint["global_step"]
+        print(f'previous global step: {previous_global_step} \n previous epochs: {previous_epochs}')
 
     model.to(device)
+    print(f'starting new model from scratch')
 
     
 
@@ -376,7 +391,7 @@ if __name__ == "__main__":
     
     train_losses, val_losses, track_tokens_seen, track_lrs = train_model(
         model, train_loader, val_loader, optimizer, device, n_epochs=n_epochs,
-        eval_freq=2_000, eval_iter=1, start_context="रामले भात", # "Every effort moves you", <modified>
+        eval_freq=args.eval_freq, eval_iter=1, start_context="रामले भात", # "Every effort moves you", <modified>
         output_dir=output_dir, tokenizer=tokenizer, warmup_steps=warmup_steps, previous_global_step=previous_global_step,
         initial_lr=1e-5, min_lr=1e-5,
         train_losses = train_losses, val_losses=val_losses, track_tokens_seen=track_tokens_seen, track_lrs=track_lrs,
