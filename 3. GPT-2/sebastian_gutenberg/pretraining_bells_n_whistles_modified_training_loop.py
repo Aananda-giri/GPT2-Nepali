@@ -80,7 +80,7 @@ BOOK_VERSION = True
 
 def train_model(model, train_loader, val_loader, optimizer, device,
         n_epochs, eval_freq, eval_iter, start_context, output_dir, tokenizer,
-        warmup_steps,resume_global_step=None, initial_lr=3e-05, min_lr=1e-6, 
+        warmup_steps, previous_global_step=None, initial_lr=3e-05, min_lr=1e-6, 
         train_losses = [], val_losses=[], track_tokens_seen=[], track_lrs=[],
         previous_epochs = 0
             ):
@@ -103,9 +103,9 @@ def train_model(model, train_loader, val_loader, optimizer, device,
                 optimizer.zero_grad()
                 global_step += 1
                 # modified to resume
-                if resume_global_step and global_step < resume_global_step:
+                if previous_global_step and global_step < previous_global_step% len(train_loader):
                     print('.')
-                    continue    # continue till global_step gets to resume_global_step
+                    continue    # continue till global_step gets to previous_global_step
 
                 # Adjust the learning rate based on the current phase (warmup or cosine annealing)
                 if global_step < warmup_steps:
@@ -152,25 +152,41 @@ def train_model(model, train_loader, val_loader, optimizer, device,
                         f"Train loss {train_loss:.3f}, "
                         f"Val loss {val_loss:.3f}"
                     )
-
-            # Generate and print a sample from the model to monitor progress (at the end of each epoch)
-            generate_and_print_sample(
-                model, tokenizer, device, start_context
-            )
+                    # Save at every 10,000 steps
+                    if global_step % 10_000 == 0:
+                        save_file_path = os.path.join(output_dir, f"model_pg_{global_step}_steps.pth")
+                        torch.save({
+                            "model_state_dict": model.state_dict(),
+                            "optimizer_state_dict": optimizer.state_dict(),
+                            "train_losses": train_losses,
+                            "train_losses": train_losses,
+                            "track_tokens_seen": track_tokens_seen,
+                            "track_lrs": track_lrs,
+                            "epochs": epoch + previous_epochs,
+                            "global_step": global_step,
+                            },
+                            save_file_path
+                    )
+                    print(f"Saved {save_file_path}")
+            if global_step % 50_000 == 0:
+                # Generate and print a sample from the model to monitor progress (at the end of each epoch)
+                generate_and_print_sample(
+                    model, tokenizer, device, start_context
+                )
             # Save at the end of each epoch
-            save_file_path = os.path.join(output_dir, f"model_pg_epoch_{epoch + previous_epochs}.pth")
-            torch.save({
-                    "model_state_dict": model.state_dict(),
-                    "optimizer_state_dict": optimizer.state_dict(),
-                    "train_losses": train_losses,
-                    "train_losses": train_losses,
-                    "track_tokens_seen": track_tokens_seen,
-                    "track_lrs": track_lrs,
-                    "epochs": epoch + previous_epochs,
-                    },
-                    save_file_path
-            )
-            print(f"Saved {save_file_path}")
+            # save_file_path = os.path.join(output_dir, f"model_pg_epoch_{epoch + previous_epochs}.pth")
+            # torch.save({
+            #         "model_state_dict": model.state_dict(),
+            #         "optimizer_state_dict": optimizer.state_dict(),
+            #         "train_losses": train_losses,
+            #         "train_losses": train_losses,
+            #         "track_tokens_seen": track_tokens_seen,
+            #         "track_lrs": track_lrs,
+            #         "epochs": epoch + previous_epochs,
+            #         },
+            #         save_file_path
+            # )
+            # print(f"Saved {save_file_path}")
     except KeyboardInterrupt:
         file_name = os.path.join(output_dir, f"model_pg_{global_step}_interrupted.pth")
         # modified. to save optimizer state_dict along with model state dict
@@ -185,46 +201,42 @@ def train_model(model, train_loader, val_loader, optimizer, device,
 
     return train_losses, val_losses, track_tokens_seen, track_lrs
 
-def get_max_global_step_file(directory='model_checkpoints'):
-    """
-    Finds the filename with the maximum global step in a given directory.
 
-    Args:
-        directory: The directory containing the files.
-
-    Returns:
-        The filename with the maximum global step.
-    """
-
-    max_step = 0
-    max_file = None
-
-    for filename in os.listdir(directory):
-        if filename.startswith('model_pg_') and filename.endswith('.pth'):
-            global_step = int(filename.split('_')[2])
-            if global_step > max_step:
-                max_step = global_step
-                max_file = filename
-
-    if max_file:return os.path.join(directory, max_file), max_step
-    return None, None
-
-def get_max_epoch_file(directory='model_checkpoints'):
-    max_epoch = 0
-    max_epoch_file = None
+# def get_max_epoch_file(directory='model_checkpoints'):
+#     max_epoch = 0
+#     max_epoch_file = None
     
+#     if os.path.exists(directory):
+#         for filename in os.listdir(directory):
+#             if filename.startswith("model_pg_epoch_") and filename.endswith(".pth"):
+#                 try:
+#                     epoch = int(filename.split("_")[-1].split(".")[0])
+#                     if epoch > max_epoch:
+#                         max_epoch = epoch
+#                         max_epoch_file = filename
+#                 except Exception as Ex:
+#                     print(f'file: {filename} : {Ex}')
+    
+#     return os.path.join(directory, max_epoch_file) if max_epoch_file else None
+
+def get_max_global_step_file(directory='model_checkpoints'):
+    max_step = 0
+    max_steps_file = None
+
     if os.path.exists(directory):
         for filename in os.listdir(directory):
-            if filename.startswith("model_pg_epoch_") and filename.endswith(".pth"):
+            # format: model_pg_{global_step}_steps.pth
+            if filename.startswith("model_pg_") and filename.endswith("_steps.pth"):
                 try:
-                    epoch = int(filename.split("_")[-1].split(".")[0])
-                    if epoch > max_epoch:
-                        max_epoch = epoch
-                        max_epoch_file = filename
+                    step = int(filename.split("model_pg_")[-1].split("_steps.pth")[0])
+                    if step > max_step:
+                        max_step = step
+                        max_steps_file = filename
                 except Exception as Ex:
                     print(f'file: {filename} : {Ex}')
     
-    return os.path.join(directory, max_epoch_file) if max_epoch_file else None
+    return os.path.join(directory, max_steps_file) if max_steps_file else None
+    
 
 if __name__ == "__main__":
     # Note:
@@ -298,12 +310,14 @@ if __name__ == "__main__":
     
     train_losses, val_losses, track_tokens_seen, track_lrs = [], [], [], []
     previous_epochs = 0
-    latest_model_checkpoint = get_max_epoch_file(directory='model_checkpoints')
+    previous_global_step = None
+    # this should work for epochs but epochs take a long time to train (so were sabing for every 10,000 steps)
+    # latest_model_checkpoint = get_max_epoch_file(directory='model_checkpoints')
+    latest_model_checkpoint = get_max_global_step_file(directory='model_checkpoints')
+    
     # if args.load_model and os.path.exists(output_dir):
     if latest_model_checkpoint and args.resume_from_previous_training:
-        # checkpoint_file_path, global_step = get_max_global_step_file(output_dir)
-        # if checkpoint_file_path:
-        # print(f'Loading existing model: {os.path.join(output_dir, "model_pg_final.pth")}')
+        
         print(f'Loading existing model: {latest_model_checkpoint}')
         
         checkpoint = torch.load(latest_model_checkpoint, weights_only=True)
@@ -318,6 +332,7 @@ if __name__ == "__main__":
         track_tokens_seen = checkpoint["track_tokens_seen"]
         track_lrs = checkpoint["track_lrs"]
         previous_epochs = checkpoint["epochs"]
+        previous_global_step = checkpoint["global_step"]
 
     model.to(device)
 
@@ -361,8 +376,8 @@ if __name__ == "__main__":
     
     train_losses, val_losses, track_tokens_seen, track_lrs = train_model(
         model, train_loader, val_loader, optimizer, device, n_epochs=n_epochs,
-        eval_freq=100, eval_iter=1, start_context="रामले भात", # "Every effort moves you", <modified>
-        output_dir=output_dir, tokenizer=tokenizer, warmup_steps=warmup_steps, #resume_global_step=global_step,
+        eval_freq=2_000, eval_iter=1, start_context="रामले भात", # "Every effort moves you", <modified>
+        output_dir=output_dir, tokenizer=tokenizer, warmup_steps=warmup_steps, previous_global_step=previous_global_step,
         initial_lr=1e-5, min_lr=1e-5,
         train_losses = train_losses, val_losses=val_losses, track_tokens_seen=track_tokens_seen, track_lrs=track_lrs,
         previous_epochs = previous_epochs
