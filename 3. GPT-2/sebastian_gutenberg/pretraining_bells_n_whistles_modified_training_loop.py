@@ -22,10 +22,10 @@ from previous_chapters import (
 )
 
 
-def read_text_file(file_path):
-    with open(file_path, "r", encoding="utf-8") as file:
-        text_data = file.read()
-    return text_data
+# def read_text_file(file_path):
+#     with open(file_path, "r", encoding="utf-8") as file:
+#         text_data = file.read()
+#     return text_data
 
 
 
@@ -74,30 +74,18 @@ def convert_time(seconds):
     return int(hours), int(minutes), int(seconds)
 
 
-def print_eta(start_time, book_start_time, index, total_files):
-    #  "Estimated Time of Arrival" or "Estimated Time of Completion".
-    book_end_time = time.time()  # End time of processing this book
-    elapsed_time = book_end_time - book_start_time
-    total_elapsed_time = book_end_time - start_time
-    books_remaining = total_files - index
-    average_time_per_book = total_elapsed_time / index
-    eta = average_time_per_book * books_remaining
-
-    book_h, book_m, book_s = convert_time(elapsed_time)
-    total_h, total_m, total_s = convert_time(total_elapsed_time)
-    eta_h, eta_m, eta_s = convert_time(eta)
-    print(f"Book processed {book_h}h {book_m}m {book_s}s"
-          f"\nTotal time elapsed {total_h}h {total_m}m {total_s}s"
-          f"\nETA for remaining books: {eta_h}h {eta_m}m {eta_s}s")
 
 BOOK_VERSION = True
 
 
 def train_model(model, train_loader, val_loader, optimizer, device,
-                n_epochs, eval_freq, eval_iter, start_context, output_dir, tokenizer,
-                warmup_steps,resume_global_step=None, initial_lr=3e-05, min_lr=1e-6):
+        n_epochs, eval_freq, eval_iter, start_context, output_dir, tokenizer,
+        warmup_steps,resume_global_step=None, initial_lr=3e-05, min_lr=1e-6, 
+        train_losses = [], val_losses=[], track_tokens_seen=[], track_lrs=[],
+        previous_epochs = 0
+            ):
     print("Training ...")
-    train_losses, val_losses, track_tokens_seen, track_lrs = [], [], [], []
+    # train_losses, val_losses, track_tokens_seen, track_lrs = [], [], [], []
     tokens_seen, global_step = 0, -1
 
     # Retrieve the maximum learning rate from the optimizer
@@ -169,8 +157,22 @@ def train_model(model, train_loader, val_loader, optimizer, device,
             generate_and_print_sample(
                 model, tokenizer, device, start_context
             )
+            # Save at the end of each epoch
+            save_file_path = os.path.join(output_dir, f"model_pg_epoch_{epoch + previous_epochs}.pth")
+            torch.save({
+                    "model_state_dict": model.state_dict(),
+                    "optimizer_state_dict": optimizer.state_dict(),
+                    "train_losses": train_losses,
+                    "train_losses": train_losses,
+                    "track_tokens_seen": track_tokens_seen,
+                    "track_lrs": track_lrs,
+                    "epochs": epoch + previous_epochs,
+                    },
+                    save_file_path
+            )
+            print(f"Saved {save_file_path}")
     except KeyboardInterrupt:
-        file_name = output_dir / f"model_pg_{global_step}_interrupted.pth"
+        file_name = os.path.join(output_dir, f"model_pg_{global_step}_interrupted.pth")
         # modified. to save optimizer state_dict along with model state dict
         # torch.save(model.state_dict(), file_name)
         torch.save({
@@ -207,6 +209,23 @@ def get_max_global_step_file(directory='model_checkpoints'):
     if max_file:return os.path.join(directory, max_file), max_step
     return None, None
 
+def get_max_epoch_file(directory='model_checkpoints'):
+    max_epoch = 0
+    max_epoch_file = None
+    
+    if os.path.exists(directory):
+        for filename in os.listdir(directory):
+            if filename.startswith("model_pg_epoch_") and filename.endswith(".pth"):
+                try:
+                    epoch = int(filename.split("_")[-1].split(".")[0])
+                    if epoch > max_epoch:
+                        max_epoch = epoch
+                        max_epoch_file = filename
+                except Exception as Ex:
+                    print(f'file: {filename} : {Ex}')
+    
+    return os.path.join(directory, max_epoch_file) if max_epoch_file else None
+
 if __name__ == "__main__":
     # Note:
     # Uncomment the following code to calculate the execution time
@@ -234,8 +253,10 @@ if __name__ == "__main__":
                         help='Uses a very small model for debugging purposes')
     parser.add_argument('--max_text_len', type=int, default=45000000,
                         help='testing different text sizes.')
-    parser.add_argument('--load_model', type=bool, default=False,
-                        help='whether or not to load the previously saved model if it exists')
+    
+    # modified. added resume_from_previous_training
+    parser.add_argument('--resume_from_previous_training', type=bool, default=True,
+                        help='whether or not to resume from saved previous training checkpoint')
 
     args = parser.parse_args()
 
@@ -273,18 +294,30 @@ if __name__ == "__main__":
 
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    global_step=0
-    if args.load_model and os.path.exists(output_dir):
-        checkpoint_file_path, global_step = get_max_global_step_file(output_dir)
-        if checkpoint_file_path:
-            print(f'Loading existing model: {os.path.join(output_dir, "model_pg_final.pth")}')
-            
-            checkpoint = torch.load(checkpoint_file_path, weights_only=True)
-            
-            # modified (added model loading code)
-            model.load_state_dict(checkpoint["model_state_dict"])
-            
-            optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+    # global_step=0
+    
+    train_losses, val_losses, track_tokens_seen, track_lrs = [], [], [], []
+    previous_epochs = 0
+    latest_model_checkpoint = get_max_epoch_file(directory='model_checkpoints')
+    # if args.load_model and os.path.exists(output_dir):
+    if latest_model_checkpoint and args.resume_from_previous_training:
+        # checkpoint_file_path, global_step = get_max_global_step_file(output_dir)
+        # if checkpoint_file_path:
+        # print(f'Loading existing model: {os.path.join(output_dir, "model_pg_final.pth")}')
+        print(f'Loading existing model: {latest_model_checkpoint}')
+        
+        checkpoint = torch.load(latest_model_checkpoint, weights_only=True)
+        
+        # modified (added model loading code)
+        model.load_state_dict(checkpoint["model_state_dict"])
+        
+        optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+
+        train_losses = checkpoint["train_losses"]
+        val_losses = checkpoint["val_losses"]
+        track_tokens_seen = checkpoint["track_tokens_seen"]
+        track_lrs = checkpoint["track_lrs"]
+        previous_epochs = checkpoint["epochs"]
 
     model.to(device)
 
@@ -298,61 +331,65 @@ if __name__ == "__main__":
     # n_epochs = 15
     n_epochs = args.n_epochs
 
-    data_dir = args.data_dir
-    all_files = [os.path.join(path, name) for path, subdirs, files
-                 in os.walk(data_dir) for name in files if name.endswith((".txt"))]
-    total_files = len(all_files)
+    # data_dir = args.data_dir
+    # all_files = [os.path.join(path, name) for path, subdirs, files
+    #              in os.walk(data_dir) for name in files if name.endswith((".txt"))]
+    # total_files = len(all_files)
 
-    if total_files == 0:
-        print("No training text files found. Make sure you "
-              "selected the correct input directory")
-        quit()
-    print("Total files:", total_files)
+    # if total_files == 0:
+    #     print("No training text files found. Make sure you "
+    #           "selected the correct input directory")
+    #     quit()
+    # print("Total files:", total_files)
 
-    for index, file_path in enumerate(all_files, 1):
-        book_start_time = time.time()
-        text_data = read_text_file(file_path) + " <|endoftext|> "
-        text_data = text_data[:args.max_text_len]
-        print(f"Tokenizing file {index} of {total_files}: {file_path}")
+    # for index, file_path in enumerate(all_files, 1):
+    # book_start_time = time.time()
+    # text_data = read_text_file(file_path) + " <|endoftext|> "
+    # text_data = text_data[:args.max_text_len]
+    # print(f"Tokenizing file {index} of {total_files}: {file_path}")
 
-        # Initialize new data loaders for each book
-        train_loader, val_loader = create_dataloaders(
-            text_data,
-            train_ratio=0.9,
-            batch_size=args.batch_size,
-            max_length=GPT_CONFIG_124M["context_length"],
-            stride=GPT_CONFIG_124M["context_length"],
-            num_workers=0
-        )
+    # Initialize new data loaders for each book
+    train_loader, val_loader = create_dataloaders(
+        train_ratio=0.9,
+        batch_size=args.batch_size,
+        num_workers=0
+    )
+    
+    total_steps = len(train_loader) * n_epochs
+    warmup_steps = int(0.2 * total_steps) # 20% warmup
+    print(warmup_steps)
+    
+    train_losses, val_losses, track_tokens_seen, track_lrs = train_model(
+        model, train_loader, val_loader, optimizer, device, n_epochs=n_epochs,
+        eval_freq=100, eval_iter=1, start_context="रामले भात", # "Every effort moves you", <modified>
+        output_dir=output_dir, tokenizer=tokenizer, warmup_steps=warmup_steps, #resume_global_step=global_step,
+        initial_lr=1e-5, min_lr=1e-5,
+        train_losses = train_losses, val_losses=val_losses, track_tokens_seen=track_tokens_seen, track_lrs=track_lrs,
+        previous_epochs = previous_epochs
         
-        total_steps = len(train_loader) * n_epochs
-        warmup_steps = int(0.2 * total_steps) # 20% warmup
-        print(warmup_steps)
-        
-        train_losses, val_losses, tokens_seen, lrs = train_model(
-            model, train_loader, val_loader, optimizer, device, n_epochs=n_epochs,
-            eval_freq=100, eval_iter=1, start_context="रामले भात", # "Every effort moves you", <modified>
-            output_dir=output_dir, tokenizer=tokenizer, warmup_steps=warmup_steps, resume_global_step=global_step,
-            initial_lr=1e-5, min_lr=1e-5
-        )
-        epochs_tensor = torch.linspace(0, args.n_epochs, len(train_losses))
-        plot_losses(epochs_tensor, tokens_seen, train_losses, val_losses, output_dir)
+    )
+    epochs_tensor = torch.linspace(0, args.n_epochs, len(train_losses))
+    plot_losses(epochs_tensor, track_tokens_seen, train_losses, val_losses, output_dir)
 
-        print_eta(start_time, book_start_time, index, total_files)
+    # print_eta(start_time, book_start_time, index, total_files)
 
-        
-        # modified. to save optimizer state_dict along with model state dict
-        # torch.save(model.state_dict(), output_dir / "model_pg_final.pth")
-        torch.save({
-            "model_state_dict": model.state_dict(),
-            "optimizer_state_dict": optimizer.state_dict(),
-            "train_losses": train_losses,
-            "train_losses": train_losses,
-
-            }, 
-            output_dir / "model_pg_final.pth"
-        )
-        print(f"Maximum GPU memory allocated: {torch.cuda.max_memory_allocated() / 1e9:.2f} GB")
+    
+    # modified. to save optimizer state_dict along with model state dict
+    # torch.save(model.state_dict(), output_dir / "model_pg_final.pth")
+    
+    # lets save at the end of each epoch instead
+    # torch.save({
+    #     "model_state_dict": model.state_dict(),
+    #     "optimizer_state_dict": optimizer.state_dict(),
+    #     "train_losses": train_losses,
+    #     "train_losses": train_losses,
+    #     "track_tokens_seen": track_tokens_seen,
+    #     "track_lrs": track_lrs,
+    #     "epochs": n_epochs + previous_epochs,
+    #     }, 
+    #     output_dir / "model_pg_final.pth"
+    # )
+    print(f"Maximum GPU memory allocated: {torch.cuda.max_memory_allocated() / 1e9:.2f} GB")
 
     # Note:
     # Uncomment the following code to show the execution time
