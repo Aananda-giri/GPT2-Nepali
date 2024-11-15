@@ -21,6 +21,8 @@ from previous_chapters import (
     plot_losses
 )
 
+from functions import delete_checkpoints_except_n_highest_steps, get_max_global_step_file
+
 
 # def read_text_file(file_path):
 #     with open(file_path, "r", encoding="utf-8") as file:
@@ -76,6 +78,7 @@ def convert_time(seconds):
 
 
 BOOK_VERSION = True
+
 
 
 def train_model(model, train_loader, val_loader, optimizer, device,
@@ -157,6 +160,7 @@ def train_model(model, train_loader, val_loader, optimizer, device,
                 
                 # Save at every 10,000 steps
                 if global_step % args.save_ckpt_freq_steps == 0 and global_step != 0:
+                    delete_checkpoints_except_n_highest_steps(n=1)  # modified. to delete the previous steps checkpoint#
                     save_file_path = os.path.join(output_dir, f"model_pg_{global_step}_steps.pth")
                     torch.save({
                         "model_state_dict": model.state_dict(),
@@ -177,6 +181,7 @@ def train_model(model, train_loader, val_loader, optimizer, device,
                     )
                     
             # Save at the end of each epoch
+            delete_checkpoints_except_n_highest_steps(n=1)  # modified. to delete the previous steps checkpoint
             save_file_path = os.path.join(output_dir, f"model_pg_epoch_{epoch + previous_epochs}.pth")
             torch.save({
                     "model_state_dict": model.state_dict(),
@@ -212,40 +217,7 @@ def train_model(model, train_loader, val_loader, optimizer, device,
     return train_losses, val_losses, track_tokens_seen, track_lrs
 
 
-# def get_max_epoch_file(directory='model_checkpoints'):
-#     max_epoch = 0
-#     max_epoch_file = None
-    
-#     if os.path.exists(directory):
-#         for filename in os.listdir(directory):
-#             if filename.startswith("model_pg_epoch_") and filename.endswith(".pth"):
-#                 try:
-#                     epoch = int(filename.split("_")[-1].split(".")[0])
-#                     if epoch > max_epoch:
-#                         max_epoch = epoch
-#                         max_epoch_file = filename
-#                 except Exception as Ex:
-#                     print(f'file: {filename} : {Ex}')
-    
-#     return os.path.join(directory, max_epoch_file) if max_epoch_file else None
 
-def get_max_global_step_file(directory='model_checkpoints'):
-    max_step = 0
-    max_steps_file = None
-
-    if os.path.exists(directory):
-        for filename in os.listdir(directory):
-            # format: model_pg_{global_step}_steps.pth
-            if filename.startswith("model_pg_") and filename.endswith("_steps.pth"):
-                try:
-                    step = int(filename.split("model_pg_")[-1].split("_steps.pth")[0])
-                    if step > max_step:
-                        max_step = step
-                        max_steps_file = filename
-                except Exception as Ex:
-                    print(f'file: {filename} : {Ex}')
-    
-    return os.path.join(directory, max_steps_file) if max_steps_file else None
     
 
 if __name__ == "__main__":
@@ -315,9 +287,10 @@ if __name__ == "__main__":
     
     
     model = GPTModel(GPT_CONFIG_124M)
+    model.to(device)
     peak_lr = 0.001  # this was originally set to 5e-4 in the book by mistake
     optimizer = torch.optim.AdamW(model.parameters(), lr=peak_lr, weight_decay=0.1)  # the book accidentally omitted the lr assignment
-
+    
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     # global_step=0
@@ -332,24 +305,37 @@ if __name__ == "__main__":
     # if args.load_model and os.path.exists(output_dir):
     if latest_model_checkpoint and args.resume_from_previous_training:
         
-        print(f'Loading existing model: {latest_model_checkpoint}')
+        print(f'Loading existing model: {latest_model_checkpoint}', end = '\n' + '-'*70 + '\n')
         
-        checkpoint = torch.load(latest_model_checkpoint, weights_only=True)
+        checkpoint = torch.load(latest_model_checkpoint, weights_only=False)
         
         # modified (added model loading code)
         model.load_state_dict(checkpoint["model_state_dict"])
         
+        optimizer = torch.optim.AdamW(model.parameters(), lr=peak_lr, weight_decay=0.1)  # the book accidentally omitted the lr assignment
         optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
 
         train_losses = checkpoint["train_losses"]
+        print(f'train_losses: {type(train_losses)}  len: {len(train_losses)}')
+
         val_losses = checkpoint["val_losses"]
+        print(f'val_losses: {type(val_losses)}  len: {len(val_losses)}')
+
         track_tokens_seen = checkpoint["track_tokens_seen"]
+        print(f'track_tokens_seen: {type(track_tokens_seen)}  len: {len(track_tokens_seen)}')
+
         track_lrs = checkpoint["track_lrs"]
+        print(f'track_lrs: {type(track_lrs)}  len: {len(track_lrs)}')
+
         previous_epochs = checkpoint["epochs"]
+        print(f'previous epochs: {type(previous_epochs)} {previous_epochs}')
+
         previous_global_step = checkpoint["global_step"]
         print(f'previous global step: {previous_global_step} \n previous epochs: {previous_epochs}')
+        print(end = '\n' + '-'*70 + '\n')
+        
 
-    model.to(device)
+    
     print(f'starting new model from scratch')
 
     
@@ -385,10 +371,13 @@ if __name__ == "__main__":
         batch_size=args.batch_size,
         num_workers=0
     )
+
+    print(f'train_loader: {len(train_loader)}')
+    print(f'val_loader: {len(val_loader)}')
     
     total_steps = len(train_loader) * n_epochs
     warmup_steps = int(0.2 * total_steps) # 20% warmup
-    print(warmup_steps)
+    print(f' warmup_steps: {warmup_steps}')
     
     train_losses, val_losses, track_tokens_seen, track_lrs = train_model(
         model, train_loader, val_loader, optimizer, device, n_epochs=n_epochs,
