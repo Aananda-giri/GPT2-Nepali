@@ -162,7 +162,7 @@ def train_model(model, train_loader, val_loader, optimizer, device,
                         "model_state_dict": model.state_dict(),
                         "optimizer_state_dict": optimizer.state_dict(),
                         "train_losses": train_losses,
-                        "train_losses": train_losses,
+                        "val_losses": val_losses,
                         "track_tokens_seen": track_tokens_seen,
                         "track_lrs": track_lrs,
                         "epochs": epoch + previous_epochs,
@@ -177,19 +177,20 @@ def train_model(model, train_loader, val_loader, optimizer, device,
                     )
                     
             # Save at the end of each epoch
-            # save_file_path = os.path.join(output_dir, f"model_pg_epoch_{epoch + previous_epochs}.pth")
-            # torch.save({
-            #         "model_state_dict": model.state_dict(),
-            #         "optimizer_state_dict": optimizer.state_dict(),
-            #         "train_losses": train_losses,
-            #         "train_losses": train_losses,
-            #         "track_tokens_seen": track_tokens_seen,
-            #         "track_lrs": track_lrs,
-            #         "epochs": epoch + previous_epochs,
-            #         },
-            #         save_file_path
-            # )
-            # print(f"Saved {save_file_path}")
+            save_file_path = os.path.join(output_dir, f"model_pg_epoch_{epoch + previous_epochs}.pth")
+            torch.save({
+                    "model_state_dict": model.state_dict(),
+                    "optimizer_state_dict": optimizer.state_dict(),
+                    "train_losses": train_losses,
+                    "val_losses": val_losses,
+                    "track_tokens_seen": track_tokens_seen,
+                    "track_lrs": track_lrs,
+                    "epochs": epoch + previous_epochs,
+                    "global_step": global_step,
+                    },
+                    save_file_path
+            )
+            print(f"Saved {save_file_path}")
     except KeyboardInterrupt:
         file_name = os.path.join(output_dir, f"model_pg_{global_step}_interrupted.pth")
         # modified. to save optimizer state_dict along with model state dict
@@ -198,7 +199,7 @@ def train_model(model, train_loader, val_loader, optimizer, device,
             "model_state_dict": model.state_dict(),
             "optimizer_state_dict": optimizer.state_dict(),
             "train_losses": train_losses,
-            "train_losses": train_losses,
+            "val_losses": val_losses,
             "track_tokens_seen": track_tokens_seen,
             "track_lrs": track_lrs,
             "epochs": epoch + previous_epochs,
