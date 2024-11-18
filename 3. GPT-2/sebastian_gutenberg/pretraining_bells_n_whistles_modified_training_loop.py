@@ -62,7 +62,7 @@ def create_dataloaders(train_ratio, batch_size, num_workers=0):
     '''
     train_loader, val_loader = create_dataloader_v2(
         batch_size=batch_size,
-        shuffle=True,
+        shuffle=False,  # modified. to avoid  shuffling the data
         drop_last=True,
         num_workers=num_workers,
         train_ratio=train_ratio
@@ -91,12 +91,6 @@ def train_model(model, train_loader, val_loader, optimizer, device,
     # train_losses, val_losses, track_tokens_seen, track_lrs = [], [], [], []
     tokens_seen, global_step = 0, -1
 
-    # modified to resume
-    if previous_global_step and global_step < previous_global_step% len(train_loader):
-        global_step = previous_global_step % len(train_loader)
-        # print('.')
-        # continue    # continue till global_step gets to previous_global_step
-
     # Retrieve the maximum learning rate from the optimizer
     peak_lr = optimizer.param_groups[0]["lr"]
 
@@ -106,9 +100,17 @@ def train_model(model, train_loader, val_loader, optimizer, device,
     # Calculate the learning rate increment during the warmup phase
     lr_increment = (peak_lr - initial_lr) / warmup_steps
     try:
+        done_resume = False # modified. to check if the resume script has been run once
         for epoch in range(n_epochs):
             model.train()
             for input_batch, target_batch in train_loader:
+                # modified to resume
+                if not done_resume and previous_global_step and global_step < previous_global_step % len(train_loader):
+                    global_step += 1    # previous_global_step % len(train_loader)
+                    # print('.')
+                    continue    # continue train_loader till global_step gets to previous_global_step
+                done_resume = True
+
                 optimizer.zero_grad()
                 global_step += 1
 
@@ -334,9 +336,8 @@ if __name__ == "__main__":
         print(f'previous global step: {previous_global_step} \n previous epochs: {previous_epochs}')
         print(end = '\n' + '-'*70 + '\n')
         
-
-    
-    print(f'starting new model from scratch')
+    else:
+        print(f'starting new model from scratch')
 
     
 

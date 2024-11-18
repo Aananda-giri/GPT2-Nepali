@@ -10,11 +10,16 @@
 # modified from `import tiktoken`
 from transformers import PreTrainedTokenizerFast
 
+
 import torch
 import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
+
+# modified. added for create_dataloader_v2
+from datasets import load_dataset
+
 
 #####################################
 # Chapter 2
@@ -57,6 +62,61 @@ def create_dataloader_v1(txt, batch_size=4, max_length=256,
         dataset, batch_size=batch_size, shuffle=shuffle, drop_last=drop_last, num_workers=num_workers)
 
     return dataloader
+
+
+def create_dataloader_v2(batch_size=4, shuffle=True, drop_last=True, num_workers=0, train_ratio=.9):
+    '''
+    modified.
+    * dont need text data as input
+    * dont need max_length and stride as input : they were set during preparing tokenized_datasets
+    '''
+    # Download the whole dataset
+    base_url = "https://huggingface.co/datasets/Aananda-giri/nepali_llm_datasets/resolve/main/pre_tokenized/"
+    data_files = {"train": base_url + "nepberta.parquet"}
+    dataset = load_dataset("parquet", data_files=data_files, split="train", cache_dir='hf_cache')
+    
+    print(dataset)
+
+    # and split it later
+    dataset = dataset.train_test_split(train_size=train_ratio, seed=42)
+    # Convert Hugging Face Dataset to PyTorch tensors (we can directly use the dataset as it is already in the correct format)
+    dataset.set_format(type="torch", columns=["input_ids", "target_ids"])  # Directly set columns to torch tensors
+
+
+
+    # Define the custom collate_fn function
+    def collate_fn(batch):
+        # Extract the 'input_ids' and 'target_ids' from the batch and return them as a list of tensors
+        input_ids = [item['input_ids'] for item in batch]
+        target_ids = [item['target_ids'] for item in batch]
+
+        # Convert to tensors (if not already)
+        input_ids_tensor = torch.stack(input_ids)
+        target_ids_tensor = torch.stack(target_ids)
+
+        return [input_ids_tensor, target_ids_tensor]
+
+    
+    # Creating the DataLoader for the 'train' split of the dataset with the custom collate_fn
+    train_loader = DataLoader(
+        dataset['train'],
+        batch_size=batch_size,
+        shuffle=shuffle,
+        drop_last=drop_last,
+        num_workers=num_workers,
+        collate_fn=collate_fn
+    )
+
+    val_loader =  DataLoader(
+        dataset['test'],
+        batch_size=batch_size,
+        shuffle=shuffle,
+        drop_last=drop_last,
+        num_workers=num_workers,
+        collate_fn=collate_fn
+    )
+
+    return train_loader, val_loader
 
 
 #####################################
