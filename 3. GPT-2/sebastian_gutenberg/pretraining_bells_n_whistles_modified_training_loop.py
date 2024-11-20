@@ -90,6 +90,10 @@ def train_model(model, train_loader, val_loader, optimizer, device,
     print("Training ...")
     # train_losses, val_losses, track_tokens_seen, track_lrs = [], [], [], []
     tokens_seen, global_step = 0, -1
+    
+    # modified. for resuming
+    train_loader_index = -1
+    train_loader_resume_index = previous_global_step % len(train_loader)
 
     # Retrieve the maximum learning rate from the optimizer
     peak_lr = optimizer.param_groups[0]["lr"]
@@ -104,12 +108,21 @@ def train_model(model, train_loader, val_loader, optimizer, device,
         for epoch in range(n_epochs):
             model.train()
             for input_batch, target_batch in train_loader:
-                # modified to resume
-                if not done_resume and previous_global_step and global_step < previous_global_step % len(train_loader):
-                    global_step += 1    # previous_global_step % len(train_loader)
-                    # print('.')
+                # modified. added to resume
+                if not done_resume and previous_global_step and train_loader_index < train_loader_resume_index:
+                    # naive implementation.
+                    # to iterate through train_loader until train_loader_index gets to train_loader_resume_index
+
+                    train_loader_index += 1    # previous_global_step % len(train_loader)
+                    # print('.', end = '')
                     continue    # continue train_loader till global_step gets to previous_global_step
-                done_resume = True
+                # modified. added
+                if not done_resume and previous_global_step:
+                    # this code is supposed to runs only once
+                    done_resume = True
+                    global_step = previous_global_step
+                    print('\n' + '-'*70 + '\n')
+                    print(f"\n{'-'*70}\n resuming from global_step : {global_step} \n train_loader_index: {train_loader_index} \n len(train_loader): {len(train_loader)}", end = '\n' + '-'*70 + '\n')
 
                 optimizer.zero_grad()
                 global_step += 1
@@ -373,8 +386,8 @@ if __name__ == "__main__":
         num_workers=0
     )
 
-    print(f'train_loader: {len(train_loader)}')
-    print(f'val_loader: {len(val_loader)}')
+    print(f'len. train_loader: {len(train_loader)}')
+    print(f'len.val_loader: {len(val_loader)}')
     
     total_steps = len(train_loader) * n_epochs
     warmup_steps = int(0.2 * total_steps) # 20% warmup
