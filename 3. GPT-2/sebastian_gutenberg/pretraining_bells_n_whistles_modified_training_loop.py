@@ -184,7 +184,7 @@ def train_model(model, train_loader, val_loader, optimizer, device,
                         "val_losses": val_losses,
                         "track_tokens_seen": track_tokens_seen,
                         "track_lrs": track_lrs,
-                        "epochs": epoch + previous_epochs,
+                        "epochs": global_step % len(train_loader) if global_step > len(train_loader) else 0,
                         "global_step": global_step,
                         },
                         save_file_path
@@ -197,7 +197,8 @@ def train_model(model, train_loader, val_loader, optimizer, device,
                     
             # Save at the end of each epoch
             delete_checkpoints_except_n_highest_steps(n=1)  # modified. to delete the previous steps checkpoint
-            save_file_path = os.path.join(output_dir, f"model_pg_epoch_{epoch + previous_epochs}.pth")
+            global_step % len(train_loader) if global_step > len(train_loader) else 0 = global_step % len(train_loader) if global_step > len(train_loader) else 0
+            save_file_path = os.path.join(output_dir, f"model_pg_epoch_{new_epochs}.pth")
             torch.save({
                     "model_state_dict": model.state_dict(),
                     "optimizer_state_dict": optimizer.state_dict(),
@@ -205,7 +206,7 @@ def train_model(model, train_loader, val_loader, optimizer, device,
                     "val_losses": val_losses,
                     "track_tokens_seen": track_tokens_seen,
                     "track_lrs": track_lrs,
-                    "epochs": epoch + previous_epochs,
+                    "epochs": new_epochs,
                     "global_step": global_step,
                     },
                     save_file_path
@@ -222,7 +223,7 @@ def train_model(model, train_loader, val_loader, optimizer, device,
             "val_losses": val_losses,
             "track_tokens_seen": track_tokens_seen,
             "track_lrs": track_lrs,
-            "epochs": epoch + previous_epochs,
+            "epochs": global_step % len(train_loader) if global_step > len(train_loader) else 0,
             "global_step": global_step,
             }, 
             file_name
@@ -311,7 +312,7 @@ if __name__ == "__main__":
     # global_step=0
     
     train_losses, val_losses, track_tokens_seen, track_lrs = [], [], [], []
-    previous_epochs = 0
+    # previous_epochs = 0
     previous_global_step = None
     # this should work for epochs but epochs take a long time to train (so were sabing for every 10,000 steps)
     # latest_model_checkpoint = get_max_epoch_file(directory='model_checkpoints')
@@ -399,7 +400,7 @@ if __name__ == "__main__":
         output_dir=output_dir, tokenizer=tokenizer, warmup_steps=warmup_steps, previous_global_step=previous_global_step,
         initial_lr=1e-5, min_lr=1e-5,
         train_losses = train_losses, val_losses=val_losses, track_tokens_seen=track_tokens_seen, track_lrs=track_lrs,
-        previous_epochs = previous_epochs
+        # previous_epochs = previous_epochs
         
     )
     epochs_tensor = torch.linspace(0, args.n_epochs, len(train_losses))
