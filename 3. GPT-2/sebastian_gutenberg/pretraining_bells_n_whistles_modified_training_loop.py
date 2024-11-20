@@ -197,7 +197,7 @@ def train_model(model, train_loader, val_loader, optimizer, device,
                     
             # Save at the end of each epoch
             delete_checkpoints_except_n_highest_steps(n=1)  # modified. to delete the previous steps checkpoint
-            global_step % len(train_loader) if global_step > len(train_loader) else 0 = global_step % len(train_loader) if global_step > len(train_loader) else 0
+            new_epochs = global_step % len(train_loader) if global_step > len(train_loader) else 0
             save_file_path = os.path.join(output_dir, f"model_pg_epoch_{new_epochs}.pth")
             torch.save({
                     "model_state_dict": model.state_dict(),
