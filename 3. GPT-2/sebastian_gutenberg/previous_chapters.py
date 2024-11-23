@@ -64,7 +64,7 @@ def create_dataloader_v1(txt, batch_size=4, max_length=256,
     return dataloader
 
 
-def create_dataloader_v2(batch_size=4, shuffle=True, drop_last=True, num_workers=0, train_ratio=.9):
+def create_dataloader_v2(batch_size=4, shuffle=True, drop_last=True, num_workers=0, train_ratio=.9, context_length=1024):
     '''
     modified.
     * dont need text data as input
@@ -72,7 +72,7 @@ def create_dataloader_v2(batch_size=4, shuffle=True, drop_last=True, num_workers
     '''
     # Download the whole dataset
     base_url = "https://huggingface.co/datasets/Aananda-giri/nepali_llm_datasets/resolve/main/pre_tokenized/"
-    data_files = {"train": base_url + "nepberta.parquet"}
+    data_files = {"train": base_url + "nepberta_" + str(context_length) + ".parquet"}
     dataset = load_dataset("parquet", data_files=data_files, split="train", cache_dir='hf_cache')
     
     print(dataset)

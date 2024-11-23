@@ -65,7 +65,9 @@ def create_dataloaders(train_ratio, batch_size, num_workers=0):
         shuffle=False,  # modified. to avoid  shuffling the data
         drop_last=True,
         num_workers=num_workers,
-        train_ratio=train_ratio
+        train_ratio=train_ratio,
+        context_length=args.context_length
+
     )
     return train_loader, val_loader
 
@@ -271,9 +273,11 @@ if __name__ == "__main__":
                         help='how often to push to hub in hours.')
     parser.add_argument('--save_ckpt_freq_steps', type=int, default=10_000,
                         help='how often to save the model checkpoint in steps')
+    parser.add_argument('--context_length', type=int, default=1024,
+                        help='context length (default: 1024)')
 
     args = parser.parse_args()
-
+    
     if args.debug:
         GPT_CONFIG_124M = {
             "vocab_size": 50000,     # Vocabulary size
@@ -287,13 +291,13 @@ if __name__ == "__main__":
 
     else:
         GPT_CONFIG_124M = {
-            "vocab_size": 50000,     # Vocabulary size
-            "context_length": 1024,  # Context length
-            "emb_dim": 768,          # Embedding dimension
-            "n_heads": 12,           # Number of attention heads
-            "n_layers": 12,          # Number of layers
-            "drop_rate": 0.1,        # Dropout rate
-            "qkv_bias": False        # Query-key-value bias
+            "vocab_size": 50000,                    # Vocabulary size
+            "context_length": args.context_length,  # Context length (default: 1024)
+            "emb_dim": 768,                         # Embedding dimension
+            "n_heads": 12,                          # Number of attention heads
+            "n_layers": 12,                         # Number of layers
+            "drop_rate": 0.1,                       # Dropout rate
+            "qkv_bias": False                       # Query-key-value bias
         }
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
