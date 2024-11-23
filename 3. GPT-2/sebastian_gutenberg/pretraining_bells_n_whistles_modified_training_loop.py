@@ -95,7 +95,7 @@ def train_model(model, train_loader, val_loader, optimizer, device,
     
     # modified. for resuming
     train_loader_index = -1
-    train_loader_resume_index = previous_global_step % len(train_loader)
+    train_loader_resume_index = previous_global_step % len(train_loader) if previous_global_step else -1
 
     # Retrieve the maximum learning rate from the optimizer
     peak_lr = optimizer.param_groups[0]["lr"]
@@ -187,7 +187,7 @@ def train_model(model, train_loader, val_loader, optimizer, device,
                         "track_tokens_seen": track_tokens_seen,
                         "track_lrs": track_lrs,
                         "epochs": global_step % len(train_loader) if global_step > len(train_loader) else 0,
-                        "global_step": global_step,
+                        "global_step": global_step +1,  # +1 because next `global_step` will be incremented by 1 and we will set: next `global_step = previous_global_step``
                         },
                         save_file_path
                     )
@@ -209,7 +209,7 @@ def train_model(model, train_loader, val_loader, optimizer, device,
                     "track_tokens_seen": track_tokens_seen,
                     "track_lrs": track_lrs,
                     "epochs": new_epochs,
-                    "global_step": global_step,
+                    "global_step": global_step +1,  # +1 because next `global_step` will be incremented by 1 and we will set: next `global_step = previous_global_step``
                     },
                     save_file_path
             )

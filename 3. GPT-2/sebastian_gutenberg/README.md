@@ -1,11 +1,12 @@
 # Introduction
 
 **Pretraining GPT-2 on NepBERTa Dataset (500MB Sample)**
-This project adapts Sebastian Raschka's code for training GPT-2 models on the NepBERTa dataset, specifically using a 500MB sample. Originally, Sebastian’s code was developed for pretraining GPT-2 on the Project Gutenberg dataset, and this version extends its functionality to a Nepali language dataset.
+This project adapts Sebastian Raschka's code for training GPT-2 models on the NepBERTa dataset, specifically using a 500MB sample. Originally, Sebastian’s code was developed for pretraining GPT-2 on the Project Gutenberg dataset, and this version extends its functionality to a Nepali language dataset and uses pre-tokenized nepali-dataset from huggingface.
 
 ### Overview
 
 - **Original Repository:** [Sebastian Raschka's LLMs-from-scratch](https://github.com/rasbt/LLMs-from-scratch/tree/main/ch05/03_bonus_pretraining_on_gutenberg)
+
 - **Modifications:** Adaptations have been made to handle Nepali text data and preprocess it appropriately for GPT-2. For a detailed list of changes, see [modifications.ipynb](./modifications.ipynb).
 
 - Also refer to [pre-tokenize.ipynb](./pre-tokenize.ipynb) for changes regarding dataloader and pre-tokenizatin (saving tokenized data instead of tokenizing at the time of training.)
@@ -18,17 +19,32 @@ This project adapts Sebastian Raschka's code for training GPT-2 models on the Ne
 * GPTDataset: save/load (from huggingface) tokenized data with input_ids and target_ids for context_length of 1024
 
 ### To run the modified version of code:
-
+* running in p100 gpu
 ```
 # to run latest version of code (pre-tokenized dataset from huggingface)
-# original: https://github.com/rasbt/LLMs-from-scratch/blob/main/appendix-D/01_main-chapter-code/appendix-D.ipynb
+# original code: https://github.com/rasbt/LLMs-from-scratch/blob/main/appendix-D/01_main-chapter-code/appendix-D.ipynb
 !python pretraining_bells_n_whistles_modified_training_loop.py \
   --n_epochs 1 \
   --batch_size 4 \
   --output_dir model_checkpoints \
-  --eval_freq 2000 \
-  --save_ckpt_freq_steps 10000
+  --eval_freq 1000 \
+  --save_ckpt_freq_steps 5000 \
+  --context_length 1024
 ```
+
+```
+# For context_length 512
+# to run latest version of code (pre-tokenized dataset from huggingface)
+# original code: https://github.com/rasbt/LLMs-from-scratch/blob/main/appendix-D/01_main-chapter-code/appendix-D.ipynb
+!python pretraining_bells_n_whistles_modified_training_loop.py \
+  --n_epochs 1 \
+  --batch_size 10 \  # turned out it does not have to be power of 2
+  --output_dir model_checkpoints \
+  --eval_freq 1000 \
+  --save_ckpt_freq_steps 5000 \
+  --context_length 512
+```
+
 
 ```
 # Download the dataset
