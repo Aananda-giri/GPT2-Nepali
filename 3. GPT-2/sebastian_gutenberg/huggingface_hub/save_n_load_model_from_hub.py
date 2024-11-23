@@ -34,18 +34,20 @@ generate_and_print_sample(
 
 # push model to huggingface
 # ----------------------------
-## import os
-import os
-from kaggle_secrets import UserSecretsClient
-user_secrets = UserSecretsClient()
+# ## import os
+# import os
+# from kaggle_secrets import UserSecretsClient
+# user_secrets = UserSecretsClient()
 
-hf_token = user_secrets.get_secret("HF_TOKEN")
+# hf_token = user_secrets.get_secret("HF_TOKEN")
 
-model.push_to_hub("Aananda-giri/GPT2-Nepali", token=hf_token)
+# model.push_to_hub("Aananda-giri/GPT2-Nepali", token=hf_token)
 
 
 # reload model from huggingface
 # ----------------------------
+from model_code import GPTModel, generate_and_print_sample
+start_context = "रामले भात"
 loaded_model = GPTModel.from_pretrained("Aananda-giri/GPT2-Nepali")
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
