@@ -4,7 +4,7 @@
 # ignore pycache
 **__pycache__/*
 
-**the_plan.*
+**the_plan.md
 
 archive/*
 preprocessing/Experiments/*
