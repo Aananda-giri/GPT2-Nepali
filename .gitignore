@@ -1,3 +1,11 @@
+# ignore environment variables
+**.env
+
+# ignore pycache
+**__pycache__/*
+
+**the_plan.*
+
 archive/*
 preprocessing/Experiments/*
 papers/*
