@@ -3,6 +3,7 @@
 - GPT2-Nepali is a GPT2-model pretrained on a 12.5GB Nepali dataset from the NepBERTa project [1].
 
 * [Pre-Trained Model (huggingface)](https://huggingface.co/Aananda-giri/GPT2-Nepali)
+* [chat interface (huggingface space)](https://huggingface.co/spaces/Aananda-giri/gpt2-nepali)
 
 ## **`1_preprocessing`**:
 
@@ -28,6 +29,10 @@ This directory includes tools and scripts for:
 - Running inference with the trained model.
 
   Note: Most of the code in this section is adapted from the book: [Build a Large Language Model (From Scratch)](https://www.manning.com/books/build-a-large-language-model-from-scratch) by Sebastian Raschka and the corresponding GitHub repository: [LLMs-from-scratch](https://github.com/rasbt/LLMs-from-scratch).
+
+# Training losses
+
+![losses](./losses.png)
 
 # Todo
 
