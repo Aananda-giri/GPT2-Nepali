@@ -5,6 +5,8 @@
 **__pycache__/*
 
 **the_plan.md
+the_plan.ipynb
+**the_plan.*
 
 archive/*
 preprocessing/Experiments/*
