@@ -30,9 +30,9 @@ This directory includes tools and scripts for:
 
   Note: Most of the code in this section is adapted from the book: [Build a Large Language Model (From Scratch)](https://www.manning.com/books/build-a-large-language-model-from-scratch) by Sebastian Raschka and the corresponding GitHub repository: [LLMs-from-scratch](https://github.com/rasbt/LLMs-from-scratch).
 
-# Training losses
+<!-- # Training losses
 
-![losses](./losses.png)
+![losses](./losses.png) -->
 
 # Todo
 
