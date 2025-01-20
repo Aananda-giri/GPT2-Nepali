@@ -1,8 +1,6 @@
 # Tokenizer
 
-Nepali CharBPETokenizer with 50k vocab_size = 50k trained on nepberta dataset.
-
-- huggingface tokenizers library was used to train a CharBPETokenizer on cleaned dataset from nepberta.
+- huggingface tokenizers library was used to train a `CharBPETokenizer` with vocab size of 50K on cleaned dataset from nepberta.
 
 - tried tokenizes with different vocab sizes (30k, 50k, 75k) and selected 50k for providing balance between small vocab size and quality of tokens.
 
