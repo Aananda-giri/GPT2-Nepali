@@ -70,10 +70,7 @@ model = GPTModel(GPT_CONFIG_124M)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model.to(device)
 
-# checkpoint = torch.load('/kaggle/input/sebastian-v4/model_checkpoints/model_pg_190000_steps.pth', weights_only=False)
-# # modified (added model loading code)
-# model.load_state_dict(checkpoint["model_state_dict"])
-
+# load from huggingface
 model = GPTModel.from_pretrained("Aananda-giri/GPT2-Nepali")
 model.to(device)
 
