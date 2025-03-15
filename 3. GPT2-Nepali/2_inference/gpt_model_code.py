@@ -288,6 +288,6 @@ def generate(
             break
 
         idx = torch.cat((idx, idx_next), dim=1)
-        text = token_ids_to_text(idx, tokenizer)
+    text = token_ids_to_text(idx, tokenizer)
 
     return text
