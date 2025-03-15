@@ -355,7 +355,7 @@ if __name__ == "__main__":
     print(f'len.val_loader: {len(val_loader)}')
     
     total_steps = len(train_loader) * n_epochs
-    warmup_steps = int(0.2 * total_steps) # 20% warmup
+    warmup_steps = int(0.02 * total_steps) # 2% warmup
     print(f' warmup_steps: {warmup_steps}')
     
     train_losses, val_losses, track_tokens_seen, track_lrs = train_model(

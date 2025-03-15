@@ -11,3 +11,7 @@ the_plan.ipynb
 archive/*
 preprocessing/Experiments/*
 papers/*
+
+sebastian/*
+packaging_tutorial/*
+next_number_prediction/*
